@@ -1,32 +1,32 @@
+// Variables
 let canvas = document.getElementById("gameCanvas");
 let ctx = canvas.getContext("2d");
 let spriteX = 250, spriteY = 250;
 let spriteSize = 10;
-let baseSpeed = 2;
+let currentSpeed = 2;
 let keysPressed = {};
 let spriteColor = "#FFFFFF";
-let startTime = Date.now();
+let startTime = 0;
 let pixelCounter = 0;
 let timeLimit = 10000;
 let gameStarted = false;
 let gameEnded = false;
 
-// Rainbow colors
+// Rainbow color cycling
 let rainbowColors = ["#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#8B00FF"];
 let colorIndex = 0;
 let trails = [];
-let lastColorChangeTime = Date.now();
+let lastColorChangeTime = 0;
 
-// Event listeners for key movement
-document.addEventListener("keydown", (event) => {
-  keysPressed[event.key] = true;
+// Listeners
+document.addEventListener("keydown", (e) => {
+  keysPressed[e.key] = true;
+});
+document.addEventListener("keyup", (e) => {
+  keysPressed[e.key] = false;
 });
 
-document.addEventListener("keyup", (event) => {
-  keysPressed[event.key] = false;
-});
-
-// Start button
+// Start Button Listener
 document.getElementById("startButton").addEventListener("click", startGame);
 
 function startGame() {
@@ -38,21 +38,21 @@ function startGame() {
   spriteY = 250;
   trails = [];
   document.getElementById("startButton").style.display = "none";
-  gameLoop();
+  requestAnimationFrame(gameLoop);
 }
 
 function gameLoop() {
-  if (gameEnded) return;
+  if (!gameStarted || gameEnded) return;
 
   updateGame();
   draw();
 
-  if (gameStarted) {
-    let timeRemaining = Math.max(0, timeLimit - (Date.now() - startTime));
-    document.getElementById("timeDisplay").textContent = `Time: ${Math.ceil(timeRemaining / 1000)}s`;
-  }
+  let elapsed = Date.now() - startTime;
+  let remaining = Math.max(0, timeLimit - elapsed);
+  document.getElementById("timeDisplay").textContent = `Time: ${Math.ceil(remaining / 1000)}s`;
+  document.getElementById("pixelCounterDisplay").textContent = `Pixels Moved: ${pixelCounter}`;
 
-  if (Date.now() - startTime >= timeLimit) {
+  if (elapsed >= timeLimit) {
     endGame();
   } else {
     requestAnimationFrame(gameLoop);
@@ -60,66 +60,43 @@ function gameLoop() {
 }
 
 function updateGame() {
-  let speed = baseSpeed;
-  if (keysPressed['s'] || keysPressed['S']) speed *= 2;
-
   let moved = false;
 
-  if (keysPressed['ArrowUp']) {
-    spriteY -= speed;
-    pixelCounter += speed;
-    moved = true;
-  }
-  if (keysPressed['ArrowDown']) {
-    spriteY += speed;
-    pixelCounter += speed;
-    moved = true;
-  }
-  if (keysPressed['ArrowLeft']) {
-    spriteX -= speed;
-    pixelCounter += speed;
-    moved = true;
-  }
-  if (keysPressed['ArrowRight']) {
-    spriteX += speed;
-    pixelCounter += speed;
-    moved = true;
-  }
+  if (keysPressed["ArrowUp"]) { spriteY -= currentSpeed; moved = true; }
+  if (keysPressed["ArrowDown"]) { spriteY += currentSpeed; moved = true; }
+  if (keysPressed["ArrowLeft"]) { spriteX -= currentSpeed; moved = true; }
+  if (keysPressed["ArrowRight"]) { spriteX += currentSpeed; moved = true; }
 
+  // Keep inside canvas
   spriteX = Math.max(0, Math.min(canvas.width - spriteSize, spriteX));
   spriteY = Math.max(0, Math.min(canvas.height - spriteSize, spriteY));
 
-  // Change color every 100ms
-  if (Date.now() - lastColorChangeTime >= 100) {
+  if (moved) pixelCounter += currentSpeed;
+
+  // Color change every 100ms
+  let now = Date.now();
+  if (now - lastColorChangeTime > 100) {
     colorIndex = (colorIndex + 1) % rainbowColors.length;
     spriteColor = rainbowColors[colorIndex];
-    lastColorChangeTime = Date.now();
+    lastColorChangeTime = now;
   }
 
-  if (moved) {
-    trails.push({ x: spriteX, y: spriteY, color: spriteColor });
-    if (trails.length > 50) trails.shift();
-  }
-
-  document.getElementById("pixelCounterDisplay").textContent = `Pixels Moved: ${pixelCounter}`;
+  trails.push({ x: spriteX, y: spriteY, color: spriteColor });
+  if (trails.length > 50) trails.shift();
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawTrails();
-  drawSprite();
-}
 
-function drawTrails() {
-  trails.forEach((trail) => {
-    ctx.fillStyle = trail.color;
+  // Draw trails
+  trails.forEach(t => {
+    ctx.fillStyle = t.color;
     ctx.beginPath();
-    ctx.arc(trail.x, trail.y, spriteSize / 2, 0, Math.PI * 2);
+    ctx.arc(t.x, t.y, spriteSize / 2, 0, Math.PI * 2);
     ctx.fill();
   });
-}
 
-function drawSprite() {
+  // Draw sprite
   ctx.fillStyle = spriteColor;
   ctx.beginPath();
   ctx.arc(spriteX, spriteY, spriteSize / 2, 0, Math.PI * 2);
@@ -128,8 +105,9 @@ function drawSprite() {
 
 function endGame() {
   gameEnded = true;
-  document.getElementById("timeDisplay").textContent = `Game Over!`;
+  document.getElementById("timeDisplay").textContent = "Game Over!";
   document.getElementById("pixelCounterDisplay").textContent = `Pixels Moved: ${pixelCounter}`;
+
   setTimeout(() => {
     gameStarted = false;
     document.getElementById("startButton").style.display = "inline";
