@@ -2,27 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pixel Mover Game</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <h1>Pixel Mover Game</h1>
-
-  <!-- Start button -->
-  <button id="startButton">Start Game</button>
-
-  <!-- Game info -->
-  <div id="gameInfo" style="display: none;">
-    <p>Time Left: <span id="timer">10</span> seconds</p>
-    <p>Pixels Moved: <span id="pixelCounter">0</span></p>
-  </div>
-
-  <!-- Game canvas -->
-  <canvas id="gameCanvas" width="500" height="500" style="display: none;"></canvas>
-
-  <script src="script.js"></script>
-
-</body>
-</html>
-
+  <title>Rainbow Trail Sprite Game</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 20px;
+    }
+    canvas {
+      background-color: #222;
+      display: block;
+      margin: 20px auto;
+      border: 2px solid #555;
+    }
+    button {
+      font-size: 16px;
+      padding: 10px 20px;
+      margin: 10px;
+      border-radius: 8px;
+      border: none;
+      background-color: #444;
+      color: #eee;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #666;
+    }
+    #status {
+      margin-top:
