@@ -1,115 +1,127 @@
-// Get references to HTML elements
-const startButton = document.getElementById('startButton');
-const gameCanvas = document.getElementById('gameCanvas');
-const ctx = gameCanvas.getContext('2d');
-const timerDisplay = document.getElementById('timer');
-const pixelCounterDisplay = document.getElementById('pixelCounter');
-const gameInfo = document.getElementById('gameInfo');
-
-// Game state variables
-let spriteX = 250;
-let spriteY = 250;
+// Existing Variables (you should keep all of these)
+let canvas = document.getElementById("gameCanvas");
+let ctx = canvas.getContext("2d");
+let spriteX = 250, spriteY = 250;
+let spriteSize = 10;
+let currentSpeed = 2;
 let keysPressed = {};
-let speed = 2;
-let pixelsMoved = 0;
-let timeLeft = 10;
-let gameInterval;
-let timerInterval;
+let spriteColor = "#FFFFFF"; // Initial color (white)
+let startTime = Date.now();
+let pixelCounter = 0;
+let timeLimit = 10000; // 10 seconds limit
+let gameStarted = false;
+let gameEnded = false;
 
-// Listen for key presses
-document.addEventListener('keydown', (e) => {
-  keysPressed[e.key] = true;
+// Rainbow color cycling
+let rainbowColors = ["#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#8B00FF"];
+let colorIndex = 0; // index to track current color
+let trails = []; // to store trail positions and colors
+
+// Event listeners for movement
+document.addEventListener("keydown", (event) => {
+  keysPressed[event.key] = true;
 });
 
-document.addEventListener('keyup', (e) => {
-  keysPressed[e.key] = false;
+document.addEventListener("keyup", (event) => {
+  keysPressed[event.key] = false;
 });
 
-// Start button click event
-startButton.addEventListener('click', startGame);
+// Start button click handler
+document.getElementById("startButton").addEventListener("click", startGame);
 
 function startGame() {
-  // Reset game state
-  spriteX = 250;
-  spriteY = 250;
-  pixelsMoved = 0;
-  timeLeft = 10;
-  pixelCounterDisplay.textContent = pixelsMoved;
-  timerDisplay.textContent = timeLeft;
-
-  // Show canvas and game info, hide start button
-  gameCanvas.style.display = 'block';
-  gameInfo.style.display = 'block';
-  startButton.style.display = 'none';
-
-  // Start game loop and timer
-  gameInterval = setInterval(updateGame, 16); // roughly 60fps
-  timerInterval = setInterval(updateTimer, 1000);
+  gameStarted = true;
+  gameEnded = false;
+  startTime = Date.now();
+  pixelCounter = 0;
+  spriteX = 250; // Reset position
+  spriteY = 250; // Reset position
+  gameLoop(); // Start the game loop
 }
 
-function updateGame() {
-  // Clear canvas
-  ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+function gameLoop() {
+  if (gameEnded) return; // Stop if game is ended
 
-  // Determine current speed (double if 's' is held)
-  let currentSpeed = keysPressed['s'] ? speed * 2 : speed;
+  updateGame(); // Update sprite, movement, and trails
+  draw(); // Draw everything on the canvas
 
-  // Movement logic
-  let movedThisFrame = 0;
-  if (keysPressed['ArrowUp']) {
-    if (spriteY - currentSpeed >= 0) {
-      spriteY -= currentSpeed;
-      movedThisFrame += currentSpeed;
-    }
-  }
-  if (keysPressed['ArrowDown']) {
-    if (spriteY + currentSpeed <= gameCanvas.height - 5) {
-      spriteY += currentSpeed;
-      movedThisFrame += currentSpeed;
-    }
-  }
-  if (keysPressed['ArrowLeft']) {
-    if (spriteX - currentSpeed >= 0) {
-      spriteX -= currentSpeed;
-      movedThisFrame += currentSpeed;
-    }
-  }
-  if (keysPressed['ArrowRight']) {
-    if (spriteX + currentSpeed <= gameCanvas.width - 5) {
-      spriteX += currentSpeed;
-      movedThisFrame += currentSpeed;
-    }
+  if (gameStarted) {
+    let timeRemaining = Math.max(0, timeLimit - (Date.now() - startTime));
+    document.getElementById("timeDisplay").textContent = `Time: ${Math.ceil(timeRemaining / 1000)}s`;
   }
 
-  // Update pixel movement counter
-  pixelsMoved += movedThisFrame;
-  pixelCounterDisplay.textContent = pixelsMoved;
-
-  // Draw sprite (5x5 white square)
-  ctx.fillStyle = 'white';
-  ctx.fillRect(spriteX, spriteY, 5, 5);
-}
-
-function updateTimer() {
-  timeLeft--;
-  timerDisplay.textContent = timeLeft;
-
-  if (timeLeft <= 0) {
+  if (Date.now() - startTime >= timeLimit) {
     endGame();
+  } else {
+    requestAnimationFrame(gameLoop); // Call next frame
   }
 }
 
-function endGame() {
-  // Stop intervals
-  clearInterval(gameInterval);
-  clearInterval(timerInterval);
+// Update sprite movement, color change, and trail
+function updateGame() {
+  // Move sprite based on key presses
+  if (keysPressed['ArrowUp']) spriteY -= currentSpeed;
+  if (keysPressed['ArrowDown']) spriteY += currentSpeed;
+  if (keysPressed['ArrowLeft']) spriteX -= currentSpeed;
+  if (keysPressed['ArrowRight']) spriteX += currentSpeed;
 
-  // Hide canvas and game info, show start button
-  gameCanvas.style.display = 'none';
-  gameInfo.style.display = 'none';
-  startButton.style.display = 'inline-block';
+  // Keep the sprite within the bounds of the canvas
+  spriteX = Math.max(0, Math.min(canvas.width - spriteSize, spriteX));
+  spriteY = Math.max(0, Math.min(canvas.height - spriteSize, spriteY));
 
-  // Clear canvas for next game
-  ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+  // Update the rainbow color every 1/10 of a second (100ms)
+  colorIndex = (colorIndex + 1) % rainbowColors.length;
+  spriteColor = rainbowColors[colorIndex];
+
+  // Store the current position and color for the trail
+  trails.push({ x: spriteX, y: spriteY, color: spriteColor });
+
+  // Limit the number of trails to avoid overload (e.g., keep last 50 positions)
+  if (trails.length > 50) {
+    trails.shift();
+  }
 }
+
+// Draw the canvas elements (sprite and trails)
+function draw() {
+  // Clear canvas before each frame
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw trails
+  drawTrails();
+
+  // Draw the sprite
+  drawSprite();
+}
+
+// Draw the trail effect
+function drawTrails() {
+  trails.forEach((trail, index) => {
+    ctx.fillStyle = trail.color;
+    ctx.beginPath();
+    ctx.arc(trail.x, trail.y, spriteSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+// Draw the sprite
+function drawSprite() {
+  ctx.fillStyle = spriteColor;
+  ctx.beginPath();
+  ctx.arc(spriteX, spriteY, spriteSize / 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// End the game
+function endGame() {
+  gameEnded = true;
+  document.getElementById("timeDisplay").textContent = `Game Over!`;
+  document.getElementById("pixelCounterDisplay").textContent = `Pixels Moved: ${pixelCounter}`;
+  // Reset everything
+  setTimeout(() => {
+    gameStarted = false;
+    document.getElementById("startButton").style.display = "inline";
+  }, 1000); // Show start button after a brief pause
+}
+
 
